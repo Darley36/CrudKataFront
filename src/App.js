@@ -171,7 +171,7 @@ function App() {
   return (
     <StoreProvider>
       <div className="App">
-        <h2>Hola mundo</h2>
+        <h2>Todo List</h2>
       </div>
       <Form/>
       <List />
