@@ -4,13 +4,14 @@ const HOST_API = "http://localhost:8080/api";
 
 const initialState = {
   list: [],
+  item:{}
 };
 const Store = createContext(initialState);
 
 const Form = () => {
   const formRef = useRef(null);
-  const { dispatch } = useContext(Store);
-  const [state, setState] = useState({})
+  const { dispatch, state:{item} } = useContext(Store);
+  const [state, setState] = useState(item)
 
   const onAdd = (event) => {
     event.preventDefault();
@@ -37,18 +38,44 @@ const Form = () => {
       });
   }
 
+  const onEdit = (event) => {
+    event.preventDefault();
+
+    const request = {
+      name: state.name,
+      id: item.id,
+      isCompleted: item.isCompleted
+    };
+
+
+    fetch(HOST_API + "/todo", {
+      method: "PUT",
+      body: JSON.stringify(request),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+      .then(response => response.json())
+      .then((todo) => {
+        dispatch({ type: "update-item", item: todo });
+        setState({ name: "" });
+        formRef.current.reset();
+      });
+  }
+
 
   return (
     <form ref={formRef}>
       <input
         type="text"
         name="name"
+        defaultValue={item.name}
         onChange={(event) => {
           setState({ ...state, name: event.target.value });
         }}
       ></input>
       {item.id && <button onClick={onEdit}>Actualizar</button>}
-      {!item.id && <button onClick={onAdd}>Crear</button>}
+      {!item.id && <button onClick={onAdd}>Agregar</button>}
     </form>
   );
 };
@@ -64,6 +91,18 @@ const List = () => {
       });
   }, [state.list.length, dispatch]);
 
+  const onDelete = (id) => {
+    fetch(HOST_API + "/" + id + "/todo", {
+      method: "DELETE"
+    }).then((list) => {
+      dispatch({ type: "delete-item", id })
+    })
+  };
+
+  const onEdit = (todo) => {
+    dispatch({ type: "edit-item", item: todo })
+  };
+
   return (
     <div>
       <table>
@@ -75,24 +114,14 @@ const List = () => {
           </tr>
         </thead>
         <tbody>
-          {currentList.map((todo) => {
+          {state.list.map((todo) => {
             return (
-              <tr key={todo.id} style={todo.completed ? decorationDone : {}}>
+              <tr key={todo.id} >
                 <td>{todo.id}</td>
                 <td>{todo.name}</td>
-                <td>
-                  <input
-                    type="checkbox"
-                    defaultChecked={todo.completed}
-                    onChange={(event) => onChange(event, todo)}
-                  ></input>
-                </td>
-                <td>
-                  <button onClick={() => onDelete(todo.id)}>Eliminar</button>
-                </td>
-                <td>
-                  <button onClick={() => onEdit(todo)}>Editar</button>
-                </td>
+                <td>{todo.isCompleted === true ?  "SI" : "NO"}</td>
+                <td><button onClick={() => onDelete(todo.id)}>Eliminar</button></td>
+                <td><button onClick={() => onEdit(todo)}>Editar</button></td>
               </tr>
             );
           })}
@@ -105,35 +134,26 @@ const List = () => {
 function reducer(state, action) {
   switch (action.type) {
     case "update-item":
-      const todoUpItem = state.todo;
-      const listUpdateEdit = todoUpItem.list.map((item) => {
+      const listUpdateEdit = state.list.map((item) => {
         if (item.id === action.item.id) {
           return action.item;
         }
         return item;
       });
-      todoUpItem.list = listUpdateEdit;
-      todoUpItem.item = {};
-      return { ...state, todo: todoUpItem };
+      return { ...state, list: listUpdateEdit, item:{} };
     case "delete-item":
-      const todoUpDelete = state.todo;
-      const listUpdate = todoUpDelete.list.filter((item) => {
+      const listUpdate = state.list.filter((item) => {
         return item.id !== action.id;
       });
-      todoUpDelete.list = listUpdate;
-      return { ...state, todo: todoUpDelete };
+      return { ...state, list: listUpdate };
     case "update-list":
-      const todoUpList = state.todo;
-      todoUpList.list = action.list;
-      return { ...state, todo: todoUpList };
+      return { ...state, list: action.list };
     case "edit-item":
-      const todoUpEdit = state.todo;
-      todoUpEdit.item = action.item;
-      return { ...state, todo: todoUpEdit };
+      return { ...state, item: action.item };
     case "add-item":
-      const todoUp = state.todo.list;
-      todoUp.push(action.item);
-      return { ...state, todo: { list: todoUp, item: {} } };
+      const newList = state.list;
+      newList.push(action.item);
+      return { ...state, list:newList};
     default:
       return state;
   }
